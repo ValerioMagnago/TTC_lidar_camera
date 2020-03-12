@@ -15,16 +15,16 @@ With reference to the picture the main step of the program are:
 <img src="images/detection_sample.png" width="620" height="202" />
 </center>
 
-3. **CROP LIDAR POINTS**: at line [**???**] inside ```cropLidarPoints``` function the 3D pointcloud is cropped to keep only the interesting region in front of the ego-car. In order to remove the ground plane the z value of points is cropped between -1.5 m and -0.9 m and to keep only the points belonging to the cars in front of the ego-vehicle the x values belongs to the interval [-2.0 , 2.0]. Nevertheless the intensity of the laser beam is controlled to access the reliability of the point coordinate and if is below 0.1 the point is discarded. Although cropping is not the best strategy that can be adopted here it is very fast and it takes less than 2 ms for each pointcloud. A more elegant approach for filtering the ground from the pointcloud can be to use RANSAC base plane filtering like the one used here [**?????**].
+3. **CROP LIDAR POINTS**: [here](src/FinalProject_Camera.cpp#L161) the ```cropLidarPoints``` function is used to crop the 3D pointcloud and keep only the interesting region in front of the ego-car. In order to remove the ground plane the z value of points is cropped between -1.5 m and -0.9 m and to keep only the points belonging to the cars in front of the ego-vehicle the x values belongs to the interval [-2.0 , 2.0]. Nevertheless the intensity of the laser beam is controlled to access the reliability of the point coordinate and if is below 0.1 the point is discarded. Although cropping is not the best strategy that can be adopted here it is very fast and it takes less than 2 ms for each pointcloud. A more elegant approach for filtering the ground from the pointcloud can be to use RANSAC base plane filtering.
 
-4. **CLUSTER LIDAR POINT CLOUD**: on line [????] the point of the cropped pointcloud are assigned to the detected objects in the image plane. This is possible knowing the intrinsic and extrinsic calibration of the camera and lidar. Inside ```clusterLidarWithROI``` function the lidar point are projected into the camera image using the pinhole camera model. Once the point is projected on the image plane it is easy to check if it is part of one of the detected object (i.e. if it is contained in one of the detected object boundingbox). This process is very fast and on average it takes less then 1 ms.
+4. **CLUSTER LIDAR POINT CLOUD**: the points of the cropped pointcloud are assigned to the detected objects in the image plane[here](src/FinalProject_Camera.cpp#L173) . This is possible knowing the intrinsic and extrinsic calibration of the camera and lidar. Inside ```clusterLidarWithROI``` function the lidar point are projected into the camera image using the pinhole camera model. Once the point is projected on the image plane it is easy to check if it is part of one of the detected object (i.e. if it is contained in one of the detected object boundingbox). This process is very fast and on average it takes less then 1 ms.
 <center>
 <img src="images/lidar_clustered.png" width="620" height="202" />
 </center>
 
-5. **DETECT KEYPOINTS**: the first step in order to compute the TTC from the camera image is to detect keypoints belonging to the surrounding cars. To speed up the process avoiding to re-initialize the detector each time the initialization and keypoint computation are separated. In particular the initialization can be found here [?????] and the keypoint detection can be found here [??????]. The supported detectors are BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT and the detection time it is strongly related with the selected detector.
+5. **DETECT KEYPOINTS**: the first step in order to compute the TTC from the camera image is to detect keypoints belonging to the surrounding cars. To speed up the process avoiding to re-initialize the detector each time the initialization and keypoint computation are separated. In particular the initialization can be found [here](src/FinalProject_Camera.cpp#L57) and the keypoint detection can be found [here](src/FinalProject_Camera.cpp#L197). The supported detectors are BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT and the detection time it is strongly related with the selected detector.
 
-6. **EXTRACT DESCRIPTORS**: in this step at each keypoint is associated a descriptor. Similar to keypoints detection this procedure is divided in an initialization step[**?????***] exectured only once and a per frame extraction step [**?????***]. The supported descriptors are BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT.
+6. **EXTRACT DESCRIPTORS**: in this step at each keypoint is associated a descriptor. Similar to keypoints detection this procedure is divided in an initialization step ([here](src/FinalProject_Camera.cpp#L60)) exectured only once and a per frame extraction step ([here](src/FinalProject_Camera.cpp#L222)). The supported descriptors are BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT.
 <center>
 <img src="images/keypoints_sample.png" width="620" height="202" />
 </center>
@@ -97,6 +97,7 @@ We propose now a comparison of ORB-BRIEF with AKAZE-AKAZE detector-descriptor. T
 ## Basic Build Instructions
 
 1. Clone this repo.
-2. Make a build directory in the top level project directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./3D_object_tracking`.
+2. Find and download `yolov3.weights` online and paste inside `dat/yolo`
+3. Make a build directory in the top level project directory: `mkdir build && cd build`
+4. Compile: `cmake .. && make`
+5. Run it: `./3D_object_tracking`.
