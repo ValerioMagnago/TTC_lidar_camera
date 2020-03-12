@@ -249,8 +249,9 @@ bool isOnLane(const LidarPoint& pt, const double laneWidth){
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
-{
+{    
     // auxiliary variables    
+    
     double laneWidth = 4.0; // assumed width of the ego lane
 
     /*
@@ -272,6 +273,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     TTC = minXCurr / (frameRate*(minXPrev - minXCurr));
     */
 
+    
     vector<double> distsPrev, distsCurr;
 
     for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
@@ -299,12 +301,13 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
     // compute TTC from both measurements
     TTC = medCurr / (frameRate*(medPrev - medCurr));
+    
 }
 
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    // ...    
     const auto n_prev = prevFrame.boundingBoxes.size();
     const auto n_curr = currFrame.boundingBoxes.size();   
     const double min_conf = 0.2;
@@ -344,7 +347,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
             bbBestMatches.insert({best_j, i});
 
             bool bVis = false;
-            if(false){
+            if(bVis){
                 const auto bb_prev = prevFrame.boundingBoxes[best_j];
                 int top, left, width, height;
                 top    = bb_prev.roi.y;
@@ -375,8 +378,10 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
             }
         }
     }
+    
+    
     /*
-    const size_t min_pts = 1;
+    const size_t min_pts = 10;
     const auto n_prev = prevFrame.boundingBoxes.size();
     const auto n_curr = currFrame.boundingBoxes.size();
     std::vector<std::vector<int>> score(n_curr,std::vector<int>(n_prev,0));
@@ -413,7 +418,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
         }
     }
 
-    // Check best score
+    // Check best score    
     for(size_t i = 0; i < n_curr; i++){
         size_t min_score = std::numeric_limits<size_t>::max();
         size_t max_score = 0, max_idx = 0;
@@ -424,17 +429,15 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
             }
             if(max_score < score[i][j]){
                 max_score = score[i][j];
-                max_idx = i;
+                max_idx = j;
             }
         }
 
         // TODO: check that score[x][j] is always less thatn score[i][j]
-        if(max_score > min_pts){
+        if(max_score > min_pts){            
             const auto res = bbBestMatches.insert({max_idx, i});
             // TODO res.second == false check who has the best score!
         }
     }
     */
-
-
 }

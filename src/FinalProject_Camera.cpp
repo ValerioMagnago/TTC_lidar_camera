@@ -1,4 +1,3 @@
-
 /* INCLUDES FOR THIS PROJECT */
 #include <iostream>
 #include <fstream>
@@ -21,25 +20,49 @@
 #include "lidarData.hpp"
 #include "camFusion.hpp"
 
+#include <fstream>      // std::fstream
+
 using namespace std;
 
+#define LOOP
 
 /* MAIN PROGRAM */
 int main(int argc, const char *argv[])
 {
     /* INIT VARIABLES AND DATA STRUCTURES */
+#ifdef LOOP    
+    std::vector<string> detectorTypes = {"FAST", "SHITOMASI", "ORB", "BRISK", "SIFT", "HARRIS", "AKAZE"}; //, "SHITOMASI", "AKAZE", "ORB", "FAST", "BRISK", "SIFT", "HARRIS"};
+    std::vector<string> kpDescriptorTypes = {"ORB", "FREAK", "SIFT", "BRISK", "BRIEF", "AKAZE"};
+    
+    for(const string detectorType : detectorTypes){
+        for(const string kpDescriptorType : kpDescriptorTypes){            
+#else
+    const string detectorType = "FAST"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+    const string kpDescriptorType = "BRIEF"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+#endif
 
-    // Detectors
-    string detectorType = "FAST";
+    if ((kpDescriptorType.compare("AKAZE") == 0 && detectorType.compare("AKAZE") != 0) ||
+        (detectorType.compare("SIFT") == 0 && kpDescriptorType.compare("ORB") == 0))
+    {
+        // AKAZE descriptors can only be used with KAZE or AKAZE keypoints.
+        // ORB descriptors are not compatible with SIFT detetor
+        #ifdef LOOP 
+            continue;
+        #else
+            return -1;
+        #endif
+    }
+
+    // Detectors    
     Detector detector(detectorType);
 
-    // Descriptors
-    string descriptorType = "BRIEF"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-    Descriptor descriptor(descriptorType);
+    // Descriptors    
+    Descriptor descriptor(kpDescriptorType);
 
     // data location
+    const string fileName = "./logs/" + detectorType + "_" + kpDescriptorType + ".txt";
     string dataPath = "../";
-
+    
     // camera
     string imgBasePath = dataPath + "images/";
     string imgPrefix = "KITTI/2011_09_26/image_02/data/000000"; // left camera, color
@@ -54,6 +77,7 @@ int main(int argc, const char *argv[])
     string yoloClassesFile = yoloBasePath + "coco.names";
     string yoloModelConfiguration = yoloBasePath + "yolov3.cfg";
     string yoloModelWeights = yoloBasePath + "yolov3.weights";
+    ObjectDetector objectDetector(yoloBasePath, yoloClassesFile, yoloModelConfiguration, yoloModelWeights);
 
     // Lidar
     string lidarPrefix = "KITTI/2011_09_26/velodyne_points/data/000000";
@@ -85,6 +109,10 @@ int main(int argc, const char *argv[])
     list<DataFrame> dataBuffer;
     bool bVis = false;            // visualize results
 
+    // Open log file
+    std::fstream fs;
+    fs.open (fileName, std::fstream::out);
+
     /* MAIN LOOP OVER ALL IMAGES */
 
     for (size_t imgIndex = 0; imgIndex <= imgEndIndex - imgStartIndex; imgIndex+=imgStepWidth)
@@ -102,7 +130,7 @@ int main(int argc, const char *argv[])
         DataFrame frame;
         frame.cameraImg = img;
         dataBuffer.push_back(frame);
-        if(dataBuffer.size() >= dataBufferSize){
+        if(dataBuffer.size() > dataBufferSize){
             dataBuffer.pop_front();
         }
         cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
@@ -111,11 +139,13 @@ int main(int argc, const char *argv[])
         /* DETECT & CLASSIFY OBJECTS */
         bVis = false;
         float confThreshold = 0.2;
-        float nmsThreshold = 0.4;        
-        detectObjects(dataBuffer.back().cameraImg, dataBuffer.back().boundingBoxes, confThreshold, nmsThreshold,
-                      yoloBasePath, yoloClassesFile, yoloModelConfiguration, yoloModelWeights, bVis);
+        float nmsThreshold = 0.4;
+        double t = (double)cv::getTickCount();       
+        objectDetector.detectObjects(dataBuffer.back().cameraImg, dataBuffer.back().boundingBoxes, 
+                confThreshold, nmsThreshold, bVis);
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();                
         bVis = false;
-        cout << "#2 : DETECT & CLASSIFY OBJECTS done" << endl;
+        cout << "#2 : DETECT & CLASSIFY OBJECTS done in " << t << "[s]" << endl;
 
 
         /* CROP LIDAR POINTS */
@@ -127,28 +157,31 @@ int main(int argc, const char *argv[])
 
         // remove Lidar points based on distance properties
         float minZ = -1.5, maxZ = -0.9, minX = 2.0, maxX = 20.0, maxY = 2.0, minR = 0.1; // focus on ego lane
+        t = (double)cv::getTickCount();       
         cropLidarPoints(lidarPoints, minX, maxX, maxY, minZ, maxZ, minR);
-    
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();                        
         dataBuffer.back().lidarPoints = lidarPoints;
 
-        cout << "#3 : CROP LIDAR POINTS done " << endl;
+        cout << "#3 : CROP LIDAR POINTS done in " << t << "[s]" << endl;
 
 
         /* CLUSTER LIDAR POINT CLOUD */
 
         // associate Lidar points with camera-based ROI
+        t = (double)cv::getTickCount();
         float shrinkFactor = 0.10; // shrinks each bounding box by the given percentage to avoid 3D object merging at the edges of an ROI
         clusterLidarWithROI(dataBuffer.back().boundingBoxes, dataBuffer.back().lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
-
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();                        
         // Visualize 3D objects        
-        bVis = true;
+        bVis = false;
         if(bVis)
         {
-            show3DObjects(dataBuffer.back().boundingBoxes, cv::Size(4.0, 20.0), cv::Size(1000, 1000), true);
+            bool bWait = false;
+            show3DObjects(dataBuffer.back().boundingBoxes, cv::Size(4.0, 20.0), cv::Size(1000, 1000), bWait);
         }
         bVis = false;
 
-        cout << "#4 : CLUSTER LIDAR POINT CLOUD done" << endl;
+        cout << "#4 : CLUSTER LIDAR POINT CLOUD done  in " << t << "[s]" << endl;
         
         
         /* DETECT IMAGE KEYPOINTS */
@@ -160,7 +193,9 @@ int main(int argc, const char *argv[])
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
 
-        detector.detectKp(keypoints, imgGray, true);
+        bVis = false;
+        detector.detectKp(keypoints, imgGray, bVis);
+        bVis = false;
 
         // optional : limit number of keypoints (helpful for debugging and learning)
         bool bLimitKpts = false;
@@ -190,21 +225,24 @@ int main(int argc, const char *argv[])
         // push descriptors for current frame to end of data buffer
         dataBuffer.back().descriptors = descriptors;
 
-        cout << "#6 : EXTRACT DESCRIPTORS done" << endl;
+        cout << "#6 : EXTRACT DESCRIPTORS done " << dataBuffer.size() << endl;
 
 
         if (dataBuffer.size() > 1) // wait until at least two images have been processed
         {
             auto prevData = dataBuffer.rbegin();
             std::advance(prevData, 1);
-            
+
             /* MATCH KEYPOINT DESCRIPTORS */
 
             vector<cv::DMatch> matches;
-            string matcherType    = "MAT_FLANN";        // MAT_BF, MAT_FLANN
-            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            string matcherType    = "MAT_FLANN";        // MAT_BF, MAT_FLANN            
             string selectorType   = "SEL_KNN";       // SEL_NN, SEL_KNN
-
+            
+            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            if(kpDescriptorType.compare("SIFT")==0){
+                descriptorType = "DES_HOG";
+            }
             matchDescriptors((prevData)->keypoints, dataBuffer.back().keypoints,
                              (prevData)->descriptors, dataBuffer.back().descriptors,
                              matches, descriptorType, matcherType, selectorType);
@@ -287,7 +325,8 @@ int main(int argc, const char *argv[])
                     computeTTCCamera((prevData)->keypoints, dataBuffer.back().keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
                     //// EOF STUDENT ASSIGNMENT
 
-                    bVis = true;
+                    fs << ttcCamera << ", " << ttcLidar << std::endl;
+                    bVis = false;
                     if (bVis)
                     {
                         cv::Mat visImg = dataBuffer.back().cameraImg.clone();
@@ -310,6 +349,10 @@ int main(int argc, const char *argv[])
             } // eof loop over all BB matches 
         }
     } // eof loop over all images
-
+    fs.close();
+#ifdef LOOP 
+        }
+    }
+#endif 
     return 0;
 }
