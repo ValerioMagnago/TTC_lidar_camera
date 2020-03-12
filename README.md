@@ -66,7 +66,18 @@ The same outlayer but one timestep later will lead to estimate a overconfident T
 This error can be mitigated by using estimation metrics for distance estimation more robust to noise like for example the median value of the points and this is particularly important in computing the relative speed of the cars. Other more complex techniques can fit a model of the car on the detected points to get a more precise estimation of the distance.
 
 ## Performance Evaluation 2
-as
+In the following image it is reported the difference between the predicted TTC from camera and the TTC computed from the lidar measurement (using median as distance metrics to enhance the robustness to noise) ordered by the value of their standard deviation.
+<center>
+<img src="images/TTC_evaluation.jpg" width="900" height="500" />
+</center>
+AKAZE, SIFT and FAST detectors show a better performance among the different tested detectors. In particular the difference of the TTC estimated from the camera with the one estimated from the lidar data is around 1.5 seconds. Note that this 1.5 seconds is not the standard deviation of the TTC measured by the camera but is the combined standard deviation of lidar and camera TTC (the sum of the TTCs' covariance).
+We propose now a comparison of ORB-BRIEF with AKAZE-AKAZE detector-descriptor. The first image shows how ORB keypoints are concentraded only in the top part of the image, while in the second image we can see how the AKAZE keypoints are spread better inside the car bounding box. Disposing of more spread keypoints enable to have more heterogeneous estimation of the ratio of the distance between keypoint producing a more robust distribution.
+<center>
+<img src="images/orb_matches.png" width="900" height="200" />
+</center>
+<center>
+<img src="images/akaze_matches.png" width="900" height="200" />
+</center>
 
 ## Dependencies for Running Locally
 * cmake >= 2.8

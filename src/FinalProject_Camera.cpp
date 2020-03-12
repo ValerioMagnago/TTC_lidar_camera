@@ -24,7 +24,7 @@
 
 using namespace std;
 
-#define LOOP
+//#define LOOP
 
 /* MAIN PROGRAM */
 int main(int argc, const char *argv[])
@@ -37,8 +37,8 @@ int main(int argc, const char *argv[])
     for(const string detectorType : detectorTypes){
         for(const string kpDescriptorType : kpDescriptorTypes){            
 #else
-    const string detectorType = "FAST"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-    const string kpDescriptorType = "BRIEF"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+    const string detectorType = "AKAZE"; //"FAST"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+    const string kpDescriptorType = "AKAZE"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
 #endif
 
     if ((kpDescriptorType.compare("AKAZE") == 0 && detectorType.compare("AKAZE") != 0) ||
@@ -305,7 +305,7 @@ int main(int argc, const char *argv[])
                     double ttcCamera;                    
                     clusterKptMatchesWithROI(*prevBB, *currBB, (prevData)->keypoints, dataBuffer.back().keypoints, dataBuffer.back().kptMatches);                                        
 
-                    bVis = false;
+                    bVis = true;
                     if (bVis)  // VISUALIZE SELECTED MATCH
                     {
                         cv::Mat matchImg = dataBuffer.back().cameraImg.clone();
@@ -326,7 +326,7 @@ int main(int argc, const char *argv[])
                     //// EOF STUDENT ASSIGNMENT
 
                     fs << ttcCamera << ", " << ttcLidar << std::endl;
-                    bVis = false;
+                    bVis = true;
                     if (bVis)
                     {
                         cv::Mat visImg = dataBuffer.back().cameraImg.clone();
